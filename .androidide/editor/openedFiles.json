@@ -1,0 +1,35 @@
+{
+  "allFiles": [
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/ChineseToY/app/src/main/java/com/example/chinesetoy/MainActivity.java",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 8695,
+          "line": 279
+        },
+        "start": {
+          "column": 52,
+          "index": 8695,
+          "line": 279
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/ChineseToY/app/src/main/res/layout/content_main.xml",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 4768,
+          "line": 129
+        },
+        "start": {
+          "column": 52,
+          "index": 4768,
+          "line": 129
+        }
+      }
+    }
+  ],
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/ChineseToY/app/src/main/java/com/example/chinesetoy/MainActivity.java"
+}

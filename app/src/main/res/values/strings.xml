@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<<<<<<< HEAD
+
+    <string name="app_name">ChineeseToM</string>
+    <string name="hello_world">Hello world!</string>
+
+</resources>
+=======
+    <string name="app_name">ChineseToY</string>
+
+</resources>
+>>>>>>> 6195274 (新增路径管理功能：保存用户添加过的路径，一键选择下载路径)
