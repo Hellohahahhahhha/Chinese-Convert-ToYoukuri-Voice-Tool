@@ -85,6 +85,13 @@
                      android:layout_width="wrap_content"
                      android:id="@+id/enChoosePath"
                      android:text="Add New Path" />
+                
+                <Button
+                     android:layout_height="wrap_content"
+                     android:layout_width="wrap_content"
+                     android:id="@+id/deleteThisPath"
+                     android:text="Delete this Path"
+                    />
 
             </LinearLayout>
 

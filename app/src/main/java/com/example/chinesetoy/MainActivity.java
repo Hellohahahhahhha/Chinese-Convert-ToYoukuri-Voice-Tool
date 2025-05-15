@@ -3,7 +3,6 @@ package com.example.chinesetoy;
 import android.os.Bundle;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.chinesetoy.databinding.ActivityMainBinding;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -28,6 +27,7 @@ import android.widget.Toast;
 import android.net.Uri;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.provider.Settings;
 
 
 import android.provider.DocumentsContract;
@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
 	private Spinner voiceTimbre;
 	private List<String> timbres;
 	private String selectedTimbre;
-    private ActivityMainBinding binding;
 	private Spinner choosePerferencePath;
 	
     //new 
@@ -89,8 +88,14 @@ public class MainActivity extends AppCompatActivity {
     private Button pcrOperator;
     private Button submitRst;
     private Button cancelIpt;
+    
+    // private Button showEditPath;
+    private Button deleteThisPath;
+    //private Button editPathName;
+    //private Button cancelEditPth;
     private EditText pathNamer;
 	private List<UserPaths> pths;
+    private UserPaths currentPath;
     private Map<String,String> pathMap;
 	private static final int REQUEST_CODE_DIR_SELECT = 1002;
 	//private static final int REQUEST_CODE_FILE_SELECT = 1001;
@@ -156,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         downloadButton = findViewById(R.id.downloadButton);
 		selectPath=findViewById(R.id.pathCosing);
 		showLog = findViewById(R.id.processLog);
+        deleteThisPath=findViewById(R.id.deleteThisPath);
 		choosePerferencePath=findViewById(R.id.pathChoices);
 		logText="";
 		voiceTimbre = findViewById(R.id.timbre);
@@ -165,8 +171,12 @@ public class MainActivity extends AppCompatActivity {
 		timbres=new ArrayList<String>();
 		timbres.add("f1e(chirno)");
 		timbres.add("f1(reimu,marisa,etc)");
-		pathMap=new HashMap();
+		
         pths=new JSONFileManager().getAllUsers();
+        pathMap=toMap(pths);
+        //as the first item of path.json is set to be "default_path"
+        currentPath=pths.get(0);
+        
 		setupPathSpinner();
         
         hidePathEditor();
@@ -194,6 +204,18 @@ public class MainActivity extends AppCompatActivity {
         }
         return ApathMap;
     }
+    private UserPaths checkPathExistence(UserPaths newPath){
+        for(UserPaths up:pths){
+            if(newPath.getName().equals(up.getName())){
+                return new UserPaths("",up.getPath());
+            }
+            if(newPath.getPath().equals(up.getPath())){
+                return new UserPaths(up.getName(),"");
+            }
+            showLogText("teted path "+up.getName()+": "+up.getPath()+"\n");
+        }
+        return null;
+    }
     private void hideOptions(){
         
         pcrOperator.setVisibility(View.GONE);
@@ -204,6 +226,7 @@ public class MainActivity extends AppCompatActivity {
         selectedPathByUser.setVisibility(View.GONE);
         pathToOperate="";
         selectedPathByUser.setText("");
+        pathNamer.setText("");
         pathChooser.setVisibility(View.GONE);
         pathNamer.setVisibility(View.GONE);
     }
@@ -217,6 +240,7 @@ public class MainActivity extends AppCompatActivity {
         pathChooser.setVisibility(View.VISIBLE);
         pathNamer.setVisibility(View.VISIBLE);
     }
+    
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -268,19 +292,72 @@ public class MainActivity extends AppCompatActivity {
 			}
 		);
 	}
+    private void showLogText(String msg){
+        logText+=msg;
+        showLog.setText(logText);
+    }
+    
+    private void deleteCurrentPath(){
+        // UserPaths tmp=currentPath.copy();
+        
+        if(currentPath.getName().equals("default_path")){
+            showError("Cannot delete default path");
+            return;
+        }
+        showLogText("deleting path:"+currentPath.getName()+"\n");
+        new JSONFileManager().deleteUser(currentPath.getName());
+        currentPath=pths.get(0);
+        pathMap=toMap(pths);
+        setupPathSpinner();
+        //showLogText("path: "+tmp.getName()+"---"+tmp.getPath()+" deleted\n");
+    }
 
     private void setupButtonClickListener() {
+        deleteThisPath.setOnClickListener(v->{
+            // 创建 AlertDialog.Builder 对象
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+            // 设置对话框标题和消息
+            builder.setTitle("Think twice");
+            builder.setMessage("You are deleting current path");
+
+            // 设置“是”按钮
+            builder.setPositiveButton("Delete", (dialog, which) -> {
+                // 用户点击“是”按钮时的逻辑
+                deleteCurrentPath();
+            });
+
+            // 设置“否”按钮
+            builder.setNegativeButton("Cancel", (dialog, which) -> {
+                // 用户点击“否”按钮时的逻辑
+                dialog.dismiss(); // 关闭对话框
+            });
+
+            // 显示对话框
+            builder.show();
+        });
         choosePerferencePath.setOnItemSelectedListener(
 			new AdapterView.OnItemSelectedListener(){
 				@Override
 				public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
 					String selectedItem = parent.getItemAtPosition(position).toString();
-					customDownloadPath=pathMap.get(selectedItem);
-                    if(customDownloadPath==null){
-                        customDownloadPath=BASE_DIR;
+                    String pthstr;
+                    if(selectedItem.equals("")){
+                        if(customDownloadPath.equals("")){
+                            //when opening the app
+                            customDownloadPath=pths.get(0).getPath();
+                            pthstr="default_path";
+                        }
+                        else{
+                            return;
+                        }
                     }
-                    logText+="Selected path: "+customDownloadPath+"\n";
-                    showLog.setText(logText);
+                    else{
+                        customDownloadPath=pathMap.get(selectedItem);
+                        pthstr=selectedItem;
+                    }
+                    currentPath=new UserPaths(pthstr,customDownloadPath);
+                    showLogText("Selected path: "+customDownloadPath+"\n");
 				}
 
 				@Override
@@ -316,13 +393,32 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this,"invalid input",Toast.LENGTH_LONG).show();
                     return;
                 }
+                
                 UserPaths newPath=new UserPaths(pathNamer.getText().toString(),pathToOperate);
+                
+                UserPaths checker=checkPathExistence(newPath);
+                try{
+                    if(checker==null){
+                        new JSONFileManager().addUser(newPath);
+                        currentPath=newPath;
+                        pathMap=toMap(pths);
+                        setupPathSpinner();
+                        choosePerferencePath.setTooltipText(currentPath.getName());
+                        hidePathEditor();
+                        showOptions();
+                        showLogText("added path\n");
+                        return;
+                }
+                if(checker.getPath()==""){
+                    Toast.makeText(MainActivity.this,"Path has been set as "+checker.getName(),Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if(checker.getName()==""){
+                    Toast.makeText(MainActivity.this,"Name has been occupied by "+checker.getPath(),Toast.LENGTH_LONG).show();
+                    return;
+                }}catch(Exception e){showError(e.toString());}
                 //use addUser to update pths List
-                new JSONFileManager().addUser(newPath);
-                pathMap=toMap(pths);
-                setupPathSpinner();
-                hidePathEditor();
-                showOptions();
+                
         });
         selectPath.setOnClickListener(v->openDirectoryChooser());
         
@@ -540,7 +636,42 @@ public class MainActivity extends AppCompatActivity {
 			.replaceAll("<spanstyle=color:#aaaaaa>.*?</span>", "");
         return content;
     }
-
+    private void checkStoragePermission() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // 检查是否已有权限
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) 
+            == PackageManager.PERMISSION_GRANTED) {
+            // 已经有权限
+            return;
+        }
+        
+        // 检查是否需要显示权限请求说明
+        if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            // 向用户解释为什么需要权限
+            new AlertDialog.Builder(this)
+                .setTitle("需要存储权限")
+                .setMessage("应用需要存储权限来保存语音文件到您的设备")
+                .setPositiveButton("确定", (dialog, which) -> {
+                    // 用户理解后请求权限
+                    requestPermissions(
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        STORAGE_PERMISSION_CODE
+                    );
+                })
+                .setNegativeButton("取消", null)
+                .create()
+                .show();
+        } else {
+            // 直接请求权限
+            requestPermissions(
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                STORAGE_PERMISSION_CODE
+            );
+        }
+    }
+    // Android 6.0 以下版本默认有权限
+}
+/*
     private void checkStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) 
@@ -551,7 +682,9 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
         }
-    }
+    }/*
+    
+    /*
 
     @Override
     public void onRequestPermissionsResult(int requestCode, 
@@ -566,7 +699,49 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "需要存储权限才能保存文件", Toast.LENGTH_SHORT).show();
             }
         }
+    }*/
+    @Override
+public void onRequestPermissionsResult(int requestCode, 
+                                     @NonNull String[] permissions, 
+                                     @NonNull int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+    if (requestCode == STORAGE_PERMISSION_CODE) {
+        if (grantResults.length > 0 && 
+            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            // 权限已授予
+            Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
+        } else {
+            // 权限被拒绝
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                    // 用户勾选了"不再询问"，引导用户去设置中开启权限
+                    showPermissionDeniedDialog();
+                } else {
+                    // 只是简单拒绝，可以再次请求
+                    Toast.makeText(this, "需要存储权限才能保存文件", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
     }
+}
+
+private void showPermissionDeniedDialog() {
+    new AlertDialog.Builder(this)
+        .setTitle("权限被永久拒绝")
+        .setMessage("您已拒绝存储权限并选择不再询问。如需使用完整功能，请在设置中手动授予权限")
+        .setPositiveButton("去设置", (dialog, which) -> {
+            // 跳转到应用设置页面
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            Uri uri = Uri.fromParts("package", getPackageName(), null);
+            intent.setData(uri);
+            startActivity(intent);
+        })
+        .setNegativeButton("取消", null)
+        .create()
+        .show();
+}
+    
 
     private void showError(String message) {
         Toast.makeText(MainActivity.this, "错误: " + message, Toast.LENGTH_LONG).show();
@@ -606,6 +781,9 @@ public class MainActivity extends AppCompatActivity {
 				return false;
 			}
 		}
+        public UserPaths copy(){
+            return new UserPaths(this.name,this.path);
+        }
 	}
 	
 	private void setupPathSpinner(){
@@ -642,6 +820,7 @@ public class MainActivity extends AppCompatActivity {
                     testFile.createNewFile();
                     List<UserPaths> defaultPaths=new ArrayList<>();
                     defaultPaths.add(new UserPaths("default_path",BASE_DIR));
+                    defaultPaths.add(new UserPaths("original_default_path",BASE_DIR));
                     String  json=gson.toJson(defaultPaths);
                     saveUsers(defaultPaths);
                 }catch(Exception e){
@@ -663,20 +842,23 @@ public class MainActivity extends AppCompatActivity {
 		public void deleteUser(String name) {
 			List<UserPaths> users = loadUsers();
 			for(int i=0;i<users.size();i++){
-				if(users.get(i).name==name){
+				if(users.get(i).getName().equals(name)){
 					users.remove(i);
+                    showLogText("path: "+name+" deleted\n");
 					break;
 				}
 			}
             pths=users;
+           // currentPath=pths.get(0);
 			saveUsers(users);
+            
 		}
 
 		// 修改用户
 		public void updateUser(String oriName,String newName, String newPath) {
 			List<UserPaths> users = loadUsers();
 			for (UserPaths user : users) {
-				if (user.name == oriName) {
+				if (user.getName().equals(oriName)) {
 					user.setName(newName);
 					user.setPath(newPath);
 					break;
